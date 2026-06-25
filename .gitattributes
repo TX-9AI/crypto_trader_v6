@@ -1,0 +1,8 @@
+# Line endings
+*.sh text eol=lf
+*.bat text eol=crlf
+*.py text eol=lf
+
+# Preserve execute permissions on shell scripts
+configure.sh eol=lf
+setup_ec2.sh eol=lf
