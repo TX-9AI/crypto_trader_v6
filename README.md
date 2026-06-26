@@ -162,7 +162,7 @@ sudo systemctl restart cryptobot
 
 | Bot | IP | Key |
 |-----|----|-----|
-| BTC v6.0 | 3.139.99.63 | C:\crypto_trader\tx-9.pem |
+| BTC v6.0 | 3.xxx.xx.xx | C:\crypto_trader\xxx.pem |
 
 ### SSH
 ```bash
@@ -172,8 +172,8 @@ ssh -i "C:\crypto_trader\tx-9.pem" ubuntu@3.139.99.63
 ---
 
 ## Telegram
-- **Bot:** @TX9AI_bot
-- **Chat ID:** 6075312586
+- **Bot:** @xxxbot
+- **Chat ID:** xxxxxxxx
 - Alerts: startup, entry, exit, regime change, P&L updates
 
 ---
@@ -231,7 +231,7 @@ crypto_trader_v6/
 ---
 
 ## Session Notes — June 25, 2026
-- v6.0 initial deployment on EC2 3.139.99.63
+- v6.0 initial deployment on EC2 
 - BTC/USD only, auto-sized from buying power
 - Removed: RISK_PER_TRADE_USD, CIRCUIT_BREAKER_PCT, Twilio, Grade C trades
 - Added: Telegram via environment variables, yfinance macro data
