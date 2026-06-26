@@ -40,7 +40,14 @@ Applied BEFORE compute_size to preserve dollar risk:
 
 ## Deployment
 
-### First-time setup (Windows desktop → fresh EC2)
+### Option 1 — Web install (mobile / Terminus / any SSH client)
+SSH into a fresh EC2 and run one command:
+```bash
+curl -fsSL https://raw.githubusercontent.com/TX-9AI/crypto_trader_v6/main/install.sh | bash
+```
+That's it. The script clones the repo, installs dependencies, and walks you through credentials and trading mode interactively. Have your Kraken API key/secret, Telegram bot token, and chat ID ready.
+
+### Option 2 — Local install (Windows desktop → fresh EC2)
 1. Unpack tarball to `C:\crypto_trader_v6\`
 2. Place `tx-9.pem` in `C:\crypto_trader\`
 3. Double-click `install.bat`
@@ -57,6 +64,12 @@ Unzip `crypto_trader_v6_diagnostic.zip` to a separate EC2. Runs with:
 ---
 
 ## Key Commands
+
+### Runtime configuration
+```bash
+bash ~/crypto-trader/configure.sh
+```
+Interactive menu to toggle paper/live mode, adjust Grade A/B sizing %, and set paper cash balance. Restarts the service automatically on exit.
 
 ### Service control
 ```bash
