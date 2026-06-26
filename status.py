@@ -62,6 +62,29 @@ def check_service():
 
 
 def get_balance():
+    # In paper mode, prefer BOT_CASH_BALANCE env var set by configure.sh
+    if PAPER_TRADING:
+        env_cash = os.environ.get("BOT_CASH_BALANCE")
+        if env_cash:
+            try:
+                return float(env_cash)
+            except ValueError:
+                pass
+        # Fall back to systemd environment if not in current env
+        try:
+            result = subprocess.run(
+                ["sudo", "systemctl", "show", SERVICE_NAME, "--property=Environment"],
+                capture_output=True, text=True
+            )
+            env_line = result.stdout.strip()
+            import re
+            match = re.search(r'BOT_CASH_BALANCE=([^ "]+)', env_line)
+            if match:
+                return float(match.group(1))
+        except Exception:
+            pass
+
+    # Live mode — pull from Kraken
     try:
         from data.market_data import get_account_balance
         bal = get_account_balance()
