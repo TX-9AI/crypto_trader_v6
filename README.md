@@ -41,11 +41,11 @@ Applied BEFORE compute_size to preserve dollar risk:
 ## Deployment
 
 ### Option 1 — Web install (mobile / Terminus / any SSH client)
-SSH into a fresh EC2 and run one command:
+SSH into a fresh EC2 and run:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TX-9AI/crypto_trader_v6/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/TX-9AI/crypto_trader_v6/main/install.sh -o install.sh && bash install.sh
 ```
-That's it. The script clones the repo, installs dependencies, and walks you through credentials and trading mode interactively. Have your Kraken API key/secret, Telegram bot token, and chat ID ready.
+The script clones the repo, installs dependencies, and walks you through credentials and trading mode interactively. Have your Kraken API key/secret, Telegram bot token, and chat ID ready.
 
 ### Option 2 — Local install (Windows desktop → fresh EC2)
 1. Unpack tarball to `C:\crypto_trader_v6\`
