@@ -66,9 +66,9 @@ class CompressionScalpStrategy(BaseStrategy):
         # Calculate BB width as % of price — must be below 1.5% to enter
         # This prevents CompressionScalp from firing in normal ranging markets
         bb_width_pct = band_width / current_price if current_price > 0 else 1.0
-        if bb_width_pct > 0.015:  # 1.5% threshold — above this is ranging, not compression
+        if bb_width_pct > 0.020:  # 2.0% threshold — above this is ranging, not compression
             logger.debug(
-                f"CompressionScalp SKIPPED: BB width {bb_width_pct:.2%} > 1.5% threshold "
+                f"CompressionScalp SKIPPED: BB width {bb_width_pct:.2%} > 2.0% threshold "
                 f"— market not tight enough for scalp"
             )
             return None
