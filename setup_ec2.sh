@@ -1,18 +1,16 @@
 #!/bin/bash
 # =============================================================================
-# setup_ec2.sh — crypto_trader v6.1 EC2 Setup
-# v1.0 — original release (Twilio, credentials.py)
-# v2.1 — 2026-06-27 — print session activation instructions after install
-# v2.0 — 2026-06-27 — Telegram only, no credentials.py, environment-based
-#         secrets, GitHub repo/token prompt, git init, matches options_trader
-#         setup style
+# setup_ec2.sh — crypto_trader v6.0 EC2 Setup
+# v1.0 — original release (Twilio, credentials.py, risk per trade prompt)
+# v2.0 — 2026-06-27 — Telegram only, secrets in systemd env, GitHub token,
+#         paper cash balance prompt (paper mode only), auto sizing no prompt
 #
-# BTC/USD | Kraken Margin | Telegram alerts
+# BTC/USD | Kraken Margin | Telegram | Auto-Sized
 # =============================================================================
 
 set -e
 export DEBIAN_FRONTEND=noninteractive
-export TERM=xtext-256color
+export TERM=xterm-256color
 
 INSTALL_DIR="$HOME/crypto-trader"
 DEPLOY_DIR="$HOME/crypto-trader-deploy"
@@ -32,12 +30,6 @@ print_info() { echo -e "  ${CYAN}→${RESET}  $1"; }
 print_warn() { echo -e "  ${YELLOW}⚠${RESET}  $1"; }
 ask()        { read -rp "    $1: " "$2"; }
 ask_secret() { read -rsp "    $1 (paste, then ENTER): " "$2"; echo ""; }
-ask_yn()     {
-    while true; do
-        read -rp "    $1 [y/n]: " yn
-        case "$yn" in [Yy]) return 0;; [Nn]) return 1;; esac
-    done
-}
 
 echo ""
 echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════════╗${RESET}"
@@ -56,25 +48,25 @@ read -rp "  Press ENTER to continue or Ctrl+C to cancel..."
 print_step "1/8" "Trading Mode"
 echo ""
 PAPER_TRADING="True"
-RISK_USD="100"
+CASH_BALANCE="0"
 
 printf "    Paper trading? [Y/n, default=Y]: "; read -r PAPER_INPUT
 PAPER_INPUT="${PAPER_INPUT:-Y}"
 if [[ "$PAPER_INPUT" =~ ^[Nn] ]]; then
     PAPER_TRADING="False"
     print_warn "LIVE TRADING — real orders will be sent to Kraken"
+    print_ok "Position sizing: auto from live Kraken balance"
 else
     PAPER_TRADING="True"
     print_ok "Paper mode"
+    printf "    Paper cash balance USD [2000]: "; read -r CASH_INPUT
+    CASH_BALANCE="${CASH_INPUT:-2000}"
+    if ! echo "$CASH_BALANCE" | grep -qE '^[0-9]+(\.[0-9]+)?$'; then
+        print_warn "Invalid — using default 2000"
+        CASH_BALANCE="2000"
+    fi
+    print_ok "Paper cash: \$${CASH_BALANCE} → \$$(echo "$CASH_BALANCE * 10" | bc) buying power (auto-sized)"
 fi
-
-printf "    Risk per trade USD [100]: "; read -r RISK_INPUT
-RISK_USD="${RISK_INPUT:-100}"
-if ! echo "$RISK_USD" | grep -qE '^[0-9]+(\.[0-9]+)?$'; then
-    print_warn "Invalid — using default 100"
-    RISK_USD="100"
-fi
-print_ok "Risk: \$${RISK_USD}/trade | Mode: $([ "$PAPER_TRADING" = "True" ] && echo "PAPER" || echo "LIVE")"
 
 # ─── STEP 2: KRAKEN CREDENTIALS ──────────────────────────────────────────────
 print_step "2/8" "Kraken API Credentials"
@@ -112,7 +104,6 @@ print_ok "Telegram configured."
 # ─── STEP 4: GITHUB REPO & TOKEN ─────────────────────────────────────────────
 print_step "4/8" "GitHub Repository (optional)"
 echo ""
-echo -e "  Enter the GitHub repo to link this server to for push.sh."
 echo -e "  Format: TX-9AI/crypto_trader_v6"
 echo -e "  Press ENTER to skip."
 echo ""
@@ -121,8 +112,6 @@ GITHUB_TOKEN=""
 printf "    GitHub repo [ENTER to skip]: "; read -r GITHUB_REPO
 
 if [[ -n "$GITHUB_REPO" ]]; then
-    echo ""
-    echo -e "  Get token from: github.com → Settings → Developer settings → Tokens (classic)"
     echo ""
     while true; do
         ask_secret "GitHub Personal Access Token" GITHUB_TOKEN
@@ -188,7 +177,7 @@ Type=simple
 User=${USER}
 WorkingDirectory=${INSTALL_DIR}
 Environment=PAPER_TRADING=${PAPER_TRADING}
-Environment=RISK_PER_TRADE_USD=${RISK_USD}
+Environment=BOT_CASH_BALANCE=${CASH_BALANCE}
 Environment=KRAKEN_API_KEY=${KRAKEN_KEY}
 Environment=KRAKEN_API_SECRET=${KRAKEN_SECRET}
 Environment=TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
@@ -243,7 +232,10 @@ if [ "$STATUS" = "active" ]; then
     echo ""
     echo -e "  Instrument:  BTC/USD (Kraken Margin)"
     echo -e "  Mode:        $([ "$PAPER_TRADING" = "True" ] && echo "📄 PAPER" || echo "🔴 LIVE")"
-    echo -e "  Risk:        \$${RISK_USD}/trade"
+    if [ "$PAPER_TRADING" = "True" ]; then
+        echo -e "  Cash:        \$${CASH_BALANCE} → \$$(echo "$CASH_BALANCE * 10" | bc) buying power"
+    fi
+    echo -e "  Sizing:      Auto (Grade A=90%, Grade B=75%)"
     echo -e "  Telegram:    chat ${TELEGRAM_CHAT_ID}"
     echo ""
     echo -e "  Commands:"
@@ -262,16 +254,3 @@ else
     echo ""
     journalctl -u ${SERVICE_NAME} -n 20 --no-pager
 fi
-
-echo ""
-echo -e "  ${BOLD}Run these to activate your session:${RESET}"
-echo -e "    source ~/crypto-trader/venv/bin/activate"
-echo -e "    cd ~/crypto-trader"
-echo ""
-echo ""
-echo -e "  ${BOLD}Session setup:${RESET}"
-echo -e "    source ~/crypto-trader/venv/bin/activate"
-echo -e "    cd ~/crypto-trader"
-echo ""
-echo -e "  These are already saved to ~/.bashrc — new SSH sessions activate automatically."
-echo ""
