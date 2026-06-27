@@ -198,7 +198,9 @@ class RiskManager:
 
     def compute_size(self, entry_price: float, stop_price: float,
                      grade: str = "B",
-                     current_balance: Optional[float] = None) -> SizingResult:
+                     current_balance: Optional[float] = None,
+                     direction: Optional[str] = None,
+                     **kwargs) -> SizingResult:
         """
         Auto-size position based on grade and buying power.
 
