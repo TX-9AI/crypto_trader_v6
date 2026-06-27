@@ -28,9 +28,9 @@ print_header() {
 }
 
 print_current() {
-    # Read current values
-    local paper=$(sudo systemctl show $SERVICE --property=Environment | grep -o 'PAPER_TRADING=[^"]*' | cut -d= -f2 | tr -d '"' || echo "Unknown")
-    local cash=$(sudo systemctl show $SERVICE --property=Environment | grep -o 'BOT_CASH_BALANCE=[^"]*' | cut -d= -f2 | tr -d '"' || echo "Unknown")
+    local env_line=$(sudo systemctl show $SERVICE --property=Environment)
+    local paper=$(echo "$env_line" | grep -o 'PAPER_TRADING=[^ ]*' | cut -d= -f2 | tr -d '"')
+    local cash=$(echo "$env_line" | grep -o 'BOT_CASH_BALANCE=[^ ]*' | cut -d= -f2 | tr -d '"')
     local grade_a=$(grep "GRADE_A_NOTIONAL_PCT" $CONFIG | grep -o '[0-9]*\.[0-9]*')
     local grade_b=$(grep "GRADE_B_NOTIONAL_PCT" $CONFIG | grep -o '[0-9]*\.[0-9]*')
 
@@ -48,12 +48,13 @@ print_menu() {
     echo "    2) Set Grade A size %  (aggressive)"
     echo "    3) Set Grade B size %  (normal)"
     echo "    4) Set paper cash balance"
-    echo "    q) Save & exit"
+    echo "    5) Save & exit"
     echo ""
 }
 
 toggle_mode() {
-    local current=$(sudo systemctl show $SERVICE --property=Environment | grep -o 'PAPER_TRADING=[^"]*' | cut -d= -f2 | tr -d '"')
+    local env_line=$(sudo systemctl show $SERVICE --property=Environment)
+    local current=$(echo "$env_line" | grep -o 'PAPER_TRADING=[^ ]*' | cut -d= -f2 | tr -d '"')
 
     if [ "$current" = "True" ]; then
         # Switching to LIVE
@@ -63,9 +64,9 @@ toggle_mode() {
         echo ""
         echo -e "  Run ${BOLD}python report.py${NC} now if you want to save paper trade history."
         echo ""
-        printf "  Type CONFIRMED to proceed: "
+        printf "  Type LIVE to proceed: "
         read -r confirm
-        if [ "$confirm" != "CONFIRMED" ]; then
+        if [ "$confirm" != "LIVE" ]; then
             echo "  Cancelled — staying in paper mode."
             return
         fi
@@ -135,7 +136,8 @@ set_grade_b() {
 
 set_cash() {
     echo ""
-    local current=$(sudo systemctl show $SERVICE --property=Environment | grep -o 'BOT_CASH_BALANCE=[^"]*' | cut -d= -f2 | tr -d '"')
+    local env_line=$(sudo systemctl show $SERVICE --property=Environment)
+    local current=$(echo "$env_line" | grep -o 'BOT_CASH_BALANCE=[^ ]*' | cut -d= -f2 | tr -d '"')
     echo -e "  Current cash balance: \$$current"
     printf "  New cash balance (USD): "
     read -r val
@@ -167,7 +169,7 @@ while true; do
         2) set_grade_a ;;
         3) set_grade_b ;;
         4) set_cash ;;
-        q|Q)
+        5)
             if [ "$_restart_needed" = true ]; then
                 echo ""
                 echo "  Applying changes and restarting bot..."

@@ -6,6 +6,7 @@ Instrument-agnostic: reads from config.
 
 import os
 import sys
+import re
 import sqlite3
 import subprocess
 from datetime import datetime, timezone
@@ -19,14 +20,13 @@ INSTALL_DIR = os.path.expanduser("~/crypto-trader")
 sys.path.insert(0, INSTALL_DIR)
 
 try:
-    from config import DB_PATH, TRADING_SYMBOL, INSTRUMENT, PAPER_TRADING
+    from config import DB_PATH, TRADING_SYMBOL, INSTRUMENT
     SERVICE_NAME = "cryptobot"
 except Exception:
-    DB_PATH      = os.path.join(INSTALL_DIR, "trades.db")
+    DB_PATH        = os.path.join(INSTALL_DIR, "trades.db")
     TRADING_SYMBOL = "BTC/USD"
-    INSTRUMENT   = "BTC"
-    PAPER_TRADING = True
-    SERVICE_NAME = "cryptobot"
+    INSTRUMENT     = "BTC"
+    SERVICE_NAME   = "cryptobot"
 
 
 def now_et():
@@ -49,6 +49,18 @@ def sep(char="─", w=52):
     print(char * w)
 
 
+def get_service_env():
+    """Read runtime environment from systemd — single source of truth."""
+    try:
+        result = subprocess.run(
+            ["sudo", "systemctl", "show", SERVICE_NAME, "--property=Environment"],
+            capture_output=True, text=True
+        )
+        return result.stdout.strip()
+    except Exception:
+        return ""
+
+
 def check_service():
     try:
         result = subprocess.run(
@@ -61,28 +73,28 @@ def check_service():
         return False, "unknown"
 
 
-def get_balance():
-    # In paper mode, prefer BOT_CASH_BALANCE env var set by configure.sh
-    if PAPER_TRADING:
-        env_cash = os.environ.get("BOT_CASH_BALANCE")
-        if env_cash:
+def get_runtime_mode(env_line):
+    """Return True if PAPER_TRADING=True in systemd env, else False."""
+    match = re.search(r'PAPER_TRADING=([^ "]+)', env_line)
+    if match:
+        return match.group(1).strip('"') == "True"
+    # Fall back to config.py if systemd env not set
+    try:
+        from config import PAPER_TRADING
+        return PAPER_TRADING
+    except Exception:
+        return True
+
+
+def get_balance(env_line, paper_trading):
+    if paper_trading:
+        # Read BOT_CASH_BALANCE from systemd env
+        match = re.search(r'BOT_CASH_BALANCE=([^ "]+)', env_line)
+        if match:
             try:
-                return float(env_cash)
+                return float(match.group(1).strip('"'))
             except ValueError:
                 pass
-        # Fall back to systemd environment if not in current env
-        try:
-            result = subprocess.run(
-                ["sudo", "systemctl", "show", SERVICE_NAME, "--property=Environment"],
-                capture_output=True, text=True
-            )
-            env_line = result.stdout.strip()
-            import re
-            match = re.search(r'BOT_CASH_BALANCE=([^ "]+)', env_line)
-            if match:
-                return float(match.group(1))
-        except Exception:
-            pass
 
     # Live mode — pull from Kraken
     try:
@@ -162,10 +174,13 @@ def main():
     icon = "🟢" if running else "🔴"
     print(f"  {icon} Service:    {status.upper()}")
     print(f"  📍 Instrument:  {TRADING_SYMBOL}")
-    mode = "PAPER" if PAPER_TRADING else "LIVE"
+
+    env_line     = get_service_env()
+    paper_trading = get_runtime_mode(env_line)
+    mode         = "PAPER" if paper_trading else "LIVE"
     print(f"  🎯 Mode:        {mode}")
 
-    balance = get_balance()
+    balance = get_balance(env_line, paper_trading)
     if balance:
         print(f"  💵 Cash:       ${balance:,.2f}  (margin: ${balance * 10:,.2f})")
     else:
