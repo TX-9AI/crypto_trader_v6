@@ -31,3 +31,7 @@ env/
 Thumbs.db
 trades.db-shm
 trades.db-wal
+trades.db-shm
+trades.db-wal
+*.db-shm
+*.db-wal
