@@ -251,3 +251,7 @@ else
     echo ""
     journalctl -u ${SERVICE_NAME} -n 20 --no-pager
 fi
+
+export PATH="$VENV/bin:$PATH"
+cd "$INSTALL_DIR"
+exec bash --login

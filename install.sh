@@ -40,9 +40,4 @@ echo ""
 chmod +x "$DEPLOY_DIR/setup_ec2.sh"
 bash "$DEPLOY_DIR/setup_ec2.sh"
 
-# Activate venv in current terminal session
-if [ -f "$VENV/bin/activate" ]; then
-    source "$VENV/bin/activate"
-    cd "$INSTALL_DIR"
-    python status.py
-fi
+
