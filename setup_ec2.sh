@@ -1,7 +1,8 @@
 #!/bin/bash
 # =============================================================================
-# setup_ec2.sh — crypto_trader v6.0 EC2 Setup
+# setup_ec2.sh — crypto_trader v6.1 EC2 Setup
 # v1.0 — original release (Twilio, credentials.py)
+# v2.1 — 2026-06-27 — print session activation instructions after install
 # v2.0 — 2026-06-27 — Telegram only, no credentials.py, environment-based
 #         secrets, GitHub repo/token prompt, git init, matches options_trader
 #         setup style
@@ -262,6 +263,11 @@ else
     journalctl -u ${SERVICE_NAME} -n 20 --no-pager
 fi
 
+echo ""
+echo -e "  ${BOLD}Run these to activate your session:${RESET}"
+echo -e "    source ~/crypto-trader/venv/bin/activate"
+echo -e "    cd ~/crypto-trader"
+echo ""
 export PATH="$VENV/bin:$PATH"
 cd "$INSTALL_DIR"
 exec bash --login
