@@ -1,47 +1,49 @@
 """
-notifications/alert_manager.py — Trade alert dispatcher.
+notifications/alert_manager.py — Trade alert dispatcher for crypto_trader.
+v1.0 — original release (Twilio SMS via sms_sender.py)
+v2.0 — 2026-06-27 — replaced SmsSender with TelegramSender, no Twilio
 
 Sends Telegram messages for critical events only:
+  - Bot startup
   - Trade entry
   - Trade exit
   - Circuit breaker fired
   - Bot restarted with open live position
   - Orphan position detected
 
-Regime changes, consecutive losses, and PnL updates are intentionally
-suppressed to avoid noise during active trading sessions.
+Regime changes, consecutive losses, and PnL updates are suppressed
+to avoid noise during active trading sessions.
 """
 
 import logging
 from database.trade_logger import TradeRecord
-from notifications.sms_sender import SmsSender
+from notifications.telegram_sender import TelegramSender
 
 logger = logging.getLogger(__name__)
 
-_sent_ids: set = set()   # Deduplicate alerts within a session
+_sent_ids: set = set()
 
 
 class AlertManager:
     def __init__(self):
-        self._sms = SmsSender()
+        self._tg = TelegramSender()
 
     def _send(self, message: str, dedup_key: str = None):
         if dedup_key:
             if dedup_key in _sent_ids:
                 return
             _sent_ids.add(dedup_key)
-        self._sms.send(message)
+        self._tg.send(message)
 
     def _send_deduped(self, trade_id: str, alert_type: str,
                       subject: str, body: str):
-        """Legacy method kept for position_manager compatibility."""
         key = f"{trade_id}:{alert_type}"
         self._send(f"<b>{subject}</b>\n{body}", dedup_key=key)
 
     # ── Entry ─────────────────────────────────────────────────────────────────
 
     def send_entry_alert(self, record: TradeRecord):
-        mode = "📄 PAPER" if record.paper_trade else "🔴 LIVE"
+        mode  = "📄 PAPER" if record.paper_trade else "🔴 LIVE"
         emoji = "📈" if record.direction == "long" else "📉"
         msg = (
             f"{emoji} <b>TRADE ENTERED [{mode}]</b>\n"
@@ -61,11 +63,11 @@ class AlertManager:
     # ── Exit ──────────────────────────────────────────────────────────────────
 
     def send_exit_alert(self, record: TradeRecord):
-        pnl    = record.pnl_usd or 0
-        r      = record.pnl_r   or 0
-        emoji  = "✅" if pnl >= 0 else "❌"
-        mode   = "📄 PAPER" if record.paper_trade else "🔴 LIVE"
-        sign   = "+" if pnl >= 0 else ""
+        pnl   = record.pnl_usd or 0
+        r     = record.pnl_r   or 0
+        emoji = "✅" if pnl >= 0 else "❌"
+        mode  = "📄 PAPER" if record.paper_trade else "🔴 LIVE"
+        sign  = "+" if pnl >= 0 else ""
         msg = (
             f"{emoji} <b>TRADE CLOSED [{mode}]</b>\n"
             f"{'─' * 28}\n"
@@ -93,7 +95,7 @@ class AlertManager:
         )
         self._send(msg, dedup_key=f"circuit_breaker:{reason}")
 
-    # ── Restart with open position ─────────────────────────────────────────────
+    # ── Restart with open position ────────────────────────────────────────────
 
     def send_recovery_alert(self, trade_id: str, direction: str,
                              entry: float, stop: float,
@@ -111,7 +113,7 @@ class AlertManager:
         )
         self._send(msg, dedup_key=f"{trade_id}:recovery")
 
-    # ── Orphan position ────────────────────────────────────────────────────────
+    # ── Orphan position ───────────────────────────────────────────────────────
 
     def send_orphan_alert(self, size: float, side: str):
         msg = (
@@ -124,30 +126,29 @@ class AlertManager:
         )
         self._send(msg, dedup_key="orphan_position")
 
-    # ── Startup (silent — no alert) ────────────────────────────────────────────
+    # ── Startup ───────────────────────────────────────────────────────────────
 
     def send_startup_alert(self, paper_trading: bool, balance: float, **kwargs):
         mode = "📄 PAPER" if paper_trading else "🔴 LIVE"
-        self._send(
+        self._tg.send(
             f"🚀 <b>crypto_trader v6.0 started</b>\n"
             f"Mode: {mode}\n"
             f"Cash: ${balance:,.2f} | Margin: ${balance*10:,.2f}\n"
             f"Instrument: BTC/USD | Kraken margin"
         )
 
-    # ── Suppressed alerts (regime, PnL updates, consecutive losses) ───────────
+    # ── Suppressed ────────────────────────────────────────────────────────────
 
     def send_regime_alert(self, *args, **kwargs):
-        pass   # Suppressed — regime changes are noise
+        pass
 
     def send_consecutive_loss_alert(self, *args, **kwargs):
-        pass   # Suppressed — circuit breaker handles this
+        pass
 
     def send_pnl_update(self, *args, **kwargs):
-        pass   # Suppressed — check query.py manually
+        pass
 
 
-# Singleton
 _alert_manager = None
 
 
