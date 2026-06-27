@@ -3,12 +3,11 @@
 # install.sh — crypto_trader v6.0 Web Installer
 # v1.0 — original release (inline, credentials.py, Twilio)
 # v2.0 — 2026-06-27 — clones repo, calls setup_ec2.sh, sources venv after
+# v2.1 — 2026-06-27 — removed set -e so venv activation always runs
 #
 # Run on a fresh EC2:
 #   curl -fsSL https://raw.githubusercontent.com/TX-9AI/crypto_trader_v6/main/install.sh -o install.sh && bash install.sh
 # =============================================================================
-
-set -e
 
 REPO="https://github.com/TX-9AI/crypto_trader_v6.git"
 DEPLOY_DIR="$HOME/crypto-trader-deploy"
