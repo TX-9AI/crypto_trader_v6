@@ -244,7 +244,6 @@ if [ "$STATUS" = "active" ]; then
     echo -e "    bash push.sh                       — push changes to GitHub"
     echo -e "    bash snapshot.sh                   — snapshot bot state"
     echo ""
-    source "${VENV}/bin/activate" && python "$INSTALL_DIR/status.py"
 else
     echo ""
     echo -e "${BOLD}${YELLOW}⚠️  Service did not start. Check:${RESET}"

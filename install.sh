@@ -44,4 +44,5 @@ bash "$DEPLOY_DIR/setup_ec2.sh"
 if [ -f "$VENV/bin/activate" ]; then
     source "$VENV/bin/activate"
     cd "$INSTALL_DIR"
+    python status.py
 fi
