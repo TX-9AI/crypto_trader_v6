@@ -147,17 +147,15 @@ rsync -a \
     "$DEPLOY_DIR/" "$INSTALL_DIR/"
 chmod +x "$INSTALL_DIR/configure.sh" "$INSTALL_DIR/push.sh" "$INSTALL_DIR/snapshot.sh" 2>/dev/null || true
 
-for f in main.py config.py requirements.txt; do
+for f in main.py config.py; do
     [ -f "$INSTALL_DIR/$f" ] || { echo "ERROR: $f missing. Aborting."; exit 1; }
 done
 print_ok "Files installed to ${INSTALL_DIR}"
-
 # ─── STEP 7: PYTHON ENVIRONMENT ──────────────────────────────────────────────
 print_step "7/8" "Python environment"
 python3 -m venv "$VENV"
 source "$VENV/bin/activate"
 pip install --upgrade pip -q
-pip install -r "$INSTALL_DIR/requirements.txt" -q
 pip install ccxt pandas numpy tzdata yfinance requests -q
 print_ok "Dependencies installed."
 
