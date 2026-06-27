@@ -2,6 +2,7 @@
 # =============================================================================
 # push.sh — Vertigo Capital Git Push Tool
 # v1.0 — 2026-06-27 — initial release
+# v1.1 — 2026-06-27 — add rebase pull before push, fix success check, exclude WAL files
 #
 # Pushes local bot changes to GitHub without exposing token in scripts.
 # Token read from systemd service environment or prompted interactively.
@@ -72,6 +73,12 @@ if [ -z "$TOKEN" ]; then
     exit 1
 fi
 
+# ── Ensure WAL files are ignored ─────────────────────────────────────────────
+GITIGNORE="$BOT_DIR/.gitignore"
+for pattern in "trades.db-shm" "trades.db-wal" "*.db-shm" "*.db-wal"; do
+    grep -qF "$pattern" "$GITIGNORE" 2>/dev/null || echo "$pattern" >> "$GITIGNORE"
+done
+
 # ── Stage and commit ──────────────────────────────────────────────────────────
 cd "$BOT_DIR"
 
@@ -91,9 +98,18 @@ git commit -m "$COMMIT_MSG"
 
 # ── Push with token, then reset URL ──────────────────────────────────────────
 git remote set-url origin "https://TX-9AI:${TOKEN}@github.com/TX-9AI/${REPO}.git"
-git push origin main
-git remote set-url origin "https://github.com/TX-9AI/${REPO}.git"
 
-echo ""
-echo -e "  ${GREEN}✅ Pushed to ${REPO} successfully.${RESET}"
+# Pull remote changes first to avoid rejection
+git pull --rebase origin main 2>/dev/null || true
+
+if git push origin main; then
+    git remote set-url origin "https://github.com/TX-9AI/${REPO}.git"
+    echo ""
+    echo -e "  ${GREEN}✅ Pushed to ${REPO} successfully.${RESET}"
+else
+    git remote set-url origin "https://github.com/TX-9AI/${REPO}.git"
+    echo ""
+    echo -e "  ${YELLOW}⚠  Push failed — check errors above.${RESET}"
+    exit 1
+fi
 echo ""
