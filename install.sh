@@ -3,6 +3,7 @@
 # install.sh — crypto_trader v6.0 Web Installer
 # v1.0 — original release (inline setup, credentials.py, Twilio)
 # v2.0 — 2026-06-27 — clones repo and calls setup_ec2.sh, matches
+# v2.1 — 2026-06-27 — activate venv and cd in install.sh after setup completes
 #         options_trader install pattern
 #
 # Run on a fresh EC2:
@@ -39,3 +40,11 @@ echo ""
 # Run setup from the deploy dir
 chmod +x "$DEPLOY_DIR/setup_ec2.sh"
 bash "$DEPLOY_DIR/setup_ec2.sh"
+
+# Activate venv and cd into install dir in the current terminal session
+INSTALL_DIR="$HOME/crypto-trader"
+VENV="$INSTALL_DIR/venv"
+if [ -f "$VENV/bin/activate" ]; then
+    source "$VENV/bin/activate"
+    cd "$INSTALL_DIR"
+fi
