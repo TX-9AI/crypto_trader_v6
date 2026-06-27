@@ -254,4 +254,4 @@ fi
 
 export PATH="$VENV/bin:$PATH"
 cd "$INSTALL_DIR"
-exec bash --login
+exec bash
