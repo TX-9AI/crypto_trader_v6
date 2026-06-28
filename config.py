@@ -1,31 +1,22 @@
 """
 config.py — crypto_trader v6.0
-================================
+v6.0 — original release
+v6.1 — 2026-06-27 — remove credentials.py import, read from environment variables
+
 BTC/USD only. Fee-aware. Auto-sizing based on grade and live balance.
 No user-configured position sizes. No circuit breaker.
-
-Key changes from v5.0:
-  - BTC/USD only (XBT/USD:BTNL on Kraken margin)
-  - Fee constants baked in — all entry decisions account for fees
-  - Position size auto-calculated from grade × account balance × leverage
-  - Circuit breaker removed — fee floor gate does the job
-  - Daily range filter on SweepReversal / MeanReversion
-  - Paper trading uses full 10× margin of configured cash balance
 """
 
 import os
 from dataclasses import dataclass, field
 from typing import Optional
 
-from credentials import (
-    KRAKEN_API_KEY,
-    KRAKEN_API_SECRET,
-    TWILIO_ACCOUNT_SID,
-    TWILIO_AUTH_TOKEN,
-    TWILIO_FROM_NUMBER,
-    ALERT_TO_PHONE,
-    BOT_NAME,
-)
+# ─── CREDENTIALS (from systemd environment) ───────────────────────────────────
+KRAKEN_API_KEY    = os.environ.get("KRAKEN_API_KEY", "")
+KRAKEN_API_SECRET = os.environ.get("KRAKEN_API_SECRET", "")
+TELEGRAM_TOKEN    = os.environ.get("TELEGRAM_TOKEN", "")
+TELEGRAM_CHAT_ID  = os.environ.get("TELEGRAM_CHAT_ID", "")
+BOT_NAME          = os.environ.get("BOT_NAME", "crypto_trader")
 
 # ─── INSTRUMENT — BTC ONLY ────────────────────────────────────────────────────
 TRADING_SYMBOL  = "BTC/USD"
@@ -33,45 +24,27 @@ KRAKEN_SYMBOL   = "XBT/USD:BTNL"
 INSTRUMENT      = "BTC"
 
 # ─── ACCOUNT ──────────────────────────────────────────────────────────────────
-ACCOUNT_BALANCE_USD       = float(os.environ.get("BOT_CASH_BALANCE", "1750"))
+ACCOUNT_BALANCE_USD       = float(os.environ.get("BOT_CASH_BALANCE", "2000"))
 LEVERAGE                  = 10
-# Buying power = ACCOUNT_BALANCE_USD × LEVERAGE
-# e.g. $1750 cash × 10x = $17,500 buying power
 
 # ─── MODE ─────────────────────────────────────────────────────────────────────
 PAPER_TRADING             = os.environ.get("PAPER_TRADING", "True") != "False"
 
-# ─── AUTO POSITION SIZING — grade-based notional pct of buying power ──────────
-# Position size = (cash × leverage × notional_pct) / entry_price
-# A grade: 90% of buying power  → aggressive, high-conviction only
-# B grade: 75% of buying power  → standard setups
-# C grade: 50% of buying power  → reduced, lower conviction
+# ─── AUTO POSITION SIZING ─────────────────────────────────────────────────────
 GRADE_A_NOTIONAL_PCT      = 0.90
 GRADE_B_NOTIONAL_PCT      = 0.75
 GRADE_C_NOTIONAL_PCT      = 0.50
-TRADE_GRADE_C             = False   # C grades disabled by default
+TRADE_GRADE_C             = False
 
 # ─── KRAKEN FEE STRUCTURE ─────────────────────────────────────────────────────
-# Market orders = taker rate. Base tier (< $2,500/month volume).
-# Update these when your 30-day volume moves to a higher tier.
-KRAKEN_TAKER_FEE          = 0.0080  # 0.80% per side (base tier taker)
-KRAKEN_MAKER_FEE          = 0.0040  # 0.40% per side (base tier maker, FYI only)
-
-# Margin-specific fees — charged on notional at open and every 4 hours
-# BTC margin: 0.01%-0.02% open, 0.01%-0.02% rollover. Using conservative 0.02%.
-KRAKEN_MARGIN_OPEN_FEE    = 0.0002  # 0.02% of notional at open
-KRAKEN_ROLLOVER_FEE       = 0.0002  # 0.02% of notional per 4-hour window
-KRAKEN_ROLLOVER_HOURS     = 4       # Hours per rollover interval
-
-# Minimum fee-adjusted 1R profit required to take a trade
-# Trade is rejected if projected 1R profit <= round-trip fees
-# Set to 1.0 = must clear fees exactly. 1.3 = 30% above fees.
+KRAKEN_TAKER_FEE          = 0.0080
+KRAKEN_MAKER_FEE          = 0.0040
+KRAKEN_MARGIN_OPEN_FEE    = 0.0002
+KRAKEN_ROLLOVER_FEE       = 0.0002
+KRAKEN_ROLLOVER_HOURS     = 4
 MIN_FEE_ADJUSTED_R        = 1.0
 
 # ─── DAILY RANGE FILTER ───────────────────────────────────────────────────────
-# BTC must show minimum daily range before SweepReversal / MeanReversion fire.
-# Prevents trading in dead compression where fees eat all profit.
-# 0.008 = 0.8% of price (~$490 on $61k BTC). Adjust based on observation.
 MIN_DAILY_RANGE_PCT       = 0.008
 
 # ─── ENTRY GATES ──────────────────────────────────────────────────────────────
@@ -83,7 +56,7 @@ ENTRY_COOLDOWN_MINUTES    = 5
 # ─── SETUP SCORER ─────────────────────────────────────────────────────────────
 GRADE_A_MIN_SCORE         = 0.78
 GRADE_B_MIN_SCORE         = 0.55
-GRADE_SIZE_MULTIPLIER     = {"A": 1.0, "B": 1.0, "C": 0.5}  # Handled by notional pct now
+GRADE_SIZE_MULTIPLIER     = {"A": 1.0, "B": 1.0, "C": 0.5}
 
 # ─── STOPS ────────────────────────────────────────────────────────────────────
 ATR_STOP_MULTIPLIER       = 1.5
@@ -157,14 +130,14 @@ CACHE_STALENESS_SECONDS = {
 # ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
 NOTIFY_ON_ENTRY           = True
 NOTIFY_ON_EXIT            = True
-NOTIFY_CIRCUIT_BREAKER    = False   # No circuit breaker in v6
+NOTIFY_CIRCUIT_BREAKER    = False
 NOTIFY_REGIME_CHANGE      = False
 NOTIFY_ON_REGIME_CHANGE   = True
 NOTIFY_PNL_UPDATE_MINUTES = 30
 NOTIFY_CONSECUTIVE_LOSS   = True
 
 # ─── MAX OPEN RISK ────────────────────────────────────────────────────────────
-MAX_OPEN_RISK_PCT         = 1.0  # Only one position at a time on BTC
+MAX_OPEN_RISK_PCT         = 1.0
 
 # ─── PATHS ────────────────────────────────────────────────────────────────────
 DB_PATH                   = os.path.expanduser("~/crypto-trader/trades.db")
@@ -179,7 +152,7 @@ MACRO_FETCH_INTERVAL_MIN  = 60
 # ─── MISC ─────────────────────────────────────────────────────────────────────
 TRADING_24_7              = True
 BLACKOUT_WINDOWS          = []
-MAX_CONSECUTIVE_LOSSES    = 3   # Used for Telegram alerts only, not blocking
+MAX_CONSECUTIVE_LOSSES    = 3
 MIN_ORDER_SIZE_BTC        = 0.0001
 DIAGNOSTIC_MODE           = False
 
